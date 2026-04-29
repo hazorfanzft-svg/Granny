@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Granny - Комната 1</title>
+    <style>
+        :root {
+            --bg: #0a0000;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: default;
+            height: 100vh;
+            width: 100vw;
+        }
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+        #vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 11;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+            transition: all 0.3s;
+        }
+        #vignette.danger {
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(120, 0, 0, 0.85) 100%);
+        }
+        #ui {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            color: #ccc;
+            font-size: 18px;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+            transition: all 0.3s;
+        }
+        #ui .prompt {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 22px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: inline-block;
+        }
+        #noise-indicator {
+            position: fixed;
+            top: 25px;
+            left: 25px;
+            z-index: 20;
+            pointer-events: none;
+            color: #aaa;
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+        }
+        #noise-bar {
+            width: 120px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        #noise-fill {
+            height: 100%;
+            background: #ff4444;
+            border-radius: 3px;
+            transition: width 0.15s;
+            width: 0%;
+        }
+        #heartbeat {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            pointer-events: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: transparent;
+            transition: all 0.2s;
+            opacity: 0;
+        }
+        #heartbeat.active {
+            animation: heartbeatPulse 0.7s ease-in-out infinite;
+            opacity: 0.5;
+            background: rgba(255, 0, 0, 0.3);
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.4);
+        }
+        @keyframes heartbeatPulse {
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            15% {
+                transform: translate(-50%, -50%) scale(1.3);
+            }
+            30% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            45% {
+                transform: translate(-50%, -50%) scale(1.25);
+            }
+            60% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        #game-over-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            pointer-events: all;
+        }
+        #game-over-screen.active {
+            display: flex;
+        }
+        #game-over-screen h1 {
+            color: #cc0000;
+            font-size: 60px;
+            letter-spacing: 5px;
+            animation: flicker 0.15s infinite alternate;
+            text-shadow: 0 0 40px red;
+        }
+        @keyframes flicker {
+            0% {
+                opacity: 0.9;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        #game-over-screen button {
+            margin-top: 30px;
+            padding: 14px 40px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #1a0000;
+            color: #ff4444;
+            border: 2px solid #ff4444;
+            letter-spacing: 3px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        #game-over-screen button:hover {
+            background: #330000;
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.5);
+        }
+        #win-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            pointer-events: all;
+        }
+        #win-screen.active {
+            display: flex;
+        }
+        #win-screen h1 {
+            color: #ffcc00;
+            font-size: 50px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 30px rgba(255, 200, 0, 0.8);
+        }
+        #win-screen button {
+            margin-top: 30px;
+            padding: 14px 40px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #1a1a00;
+            color: #ffcc00;
+            border: 2px solid #ffcc00;
+            letter-spacing: 3px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        #instructions {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            z-index: 20;
+            pointer-events: none;
+            color: #888;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-align: right;
+            text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+            line-height: 1.6;
+        }
+        #subtitle {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            pointer-events: none;
+            color: #ff8888;
+            font-size: 16px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="vignette"></div>
+    <div id="heartbeat"></div>
+
+    <div id="noise-indicator">
+        ШУМ
+        <div id="noise-bar"><div id="noise-fill"></div></div>
+    </div>
+
+    <div id="instructions">
+        WASD - движение<br>
+        Мышь - взгляд<br>
+        SHIFT - бег (шум!)<br>
+        CTRL - присесть<br>
+        E - взаимодействие<br>
+        Спрячьтесь от Бабушки!
+    </div>
+
+    <div id="ui"><span class="prompt">Найдите ключ и откройте дверь...</span></div>
+    <div id="subtitle"></div>
+
+    <div id="game-over-screen">
+        <h1>БАБУШКА ПОЙМАЛА ТЕБЯ</h1>
+        <button onclick="restartGame()">ПОПРОБОВАТЬ СНОВА</button>
+    </div>
+    <div id="win-screen">
+        <h1>ВЫ СБЕЖАЛИ!</h1>
+        <button onclick="restartGame()">ИГРАТЬ ЕЩЁ</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ==================== AUDIO ENGINE ====================
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playHeartbeat() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(45, now);
+            osc.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+
+        function playCreak() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(80, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+
+        function playFootstep(volume = 0.05) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(20 + Math.random() * 40, now);
+            gain.gain.setValueAtTime(volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+
+        // ==================== SCENE SETUP ====================
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0a0a0a, 2, 18);
+        scene.background = new THREE.Color(0x050505);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 30);
+        camera.position.set(0, 1.6, 0);
+        camera.rotation.order = 'YXZ';
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        // ==================== LIGHTING ====================
+        const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.6);
+        scene.add(ambientLight);
+
+        const ceilingLight = new THREE.PointLight(0xffddcc, 40, 7, 0.5);
+        ceilingLight.position.set(0, 2.85, 0);
+        ceilingLight.castShadow = true;
+        ceilingLight.shadow.mapSize.width = 512;
+        ceilingLight.shadow.mapSize.height = 512;
+        ceilingLight.shadow.camera.near = 0.1;
+        ceilingLight.shadow.camera.far = 15;
+        ceilingLight.shadow.bias = -0.0005;
+        ceilingLight.shadow.radius = 3;
+        scene.add(ceilingLight);
+
+        const bulbGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xffeedd })
+        );
+        bulbGlow.position.copy(ceilingLight.position);
+        scene.add(bulbGlow);
+
+        // ==================== TEXTURES ====================
+        function createWoodTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#3d2817';
+            ctx.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 60; i++) {
+                const y = i * 4.3 + Math.random() * 3;
+                ctx.strokeStyle =
+                    `rgba(${30+Math.random()*40},${12+Math.random()*20},${4+Math.random()*10},${0.3+Math.random()*0.5})`;
+                ctx.lineWidth = 0.5 + Math.random() * 2;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                for (let x = 0; x < 256; x += 20) {
+                    ctx.lineTo(x, y + (Math.random() - 0.5) * 3);
+                }
+                ctx.stroke();
+            }
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.3})`;
+                ctx.fillRect(x, y, Math.random() * 3, Math.random() * 3);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createWallpaperTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#c4b896';
+            ctx.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 40; i++) {
+                const x = i * 6.4;
+                ctx.fillStyle = 'rgba(0,0,0,0.04)';
+                ctx.fillRect(x, 0, 3, 256);
+            }
+            for (let i = 0; i < 300; i++) {
+                ctx.fillStyle = `rgba(${180+Math.random()*40},${160+Math.random()*30},${120+Math.random()*30},0.06)`;
+                ctx.fillRect(Math.random() * 256, Math.random() * 256, Math.random() * 8, Math.random() * 8);
+            }
+            for (let i = 0; i < 15; i++) {
+                ctx.fillStyle = 'rgba(80,40,20,0.08)';
+                ctx.fillRect(Math.random() * 200, Math.random() * 200, Math.random() * 50, Math.random() * 50);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const woodTex = createWoodTexture();
+        woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+        woodTex.repeat.set(4, 4);
+
+        const wallpaperTex = createWallpaperTexture();
+        wallpaperTex.wrapS = wallpaperTex.wrapT = THREE.RepeatWrapping;
+        wallpaperTex.repeat.set(3, 1.5);
+
+        const floorMat = new THREE.MeshStandardMaterial({
+            map: woodTex,
+            roughness: 0.7,
+            metalness: 0.05,
+            color: 0xbb9977
+        });
+        const wallMat = new THREE.MeshStandardMaterial({
+            map: wallpaperTex,
+            roughness: 0.85,
+            metalness: 0.02,
+            color: 0xd5c9a8
+        });
+        const ceilingMat = new THREE.MeshStandardMaterial({
+            roughness: 0.9,
+            metalness: 0,
+            color: 0x3a3530
+        });
+        const darkWoodMat = new THREE.MeshStandardMaterial({
+            roughness: 0.55,
+            metalness: 0.1,
+            color: 0x4a2f1a
+        });
+        const metalMat = new THREE.MeshStandardMaterial({
+            roughness: 0.3,
+            metalness: 0.8,
+            color: 0x555555
+        });
+
+        // ==================== ROOM ====================
+        const roomGroup = new THREE.Group();
+        scene.add(roomGroup);
+
+        const ROOM_W = 9;
+        const ROOM_D = 8;
+        const ROOM_H = 3;
+        const WALL_T = 0.25;
+
+        // Floor
+        const floor = new THREE.Mesh(
+            new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D),
+            floorMat
+        );
+        floor.position.set(0, -0.1, 0);
+        floor.receiveShadow = true;
+        roomGroup.add(floor);
+
+        // Ceiling
+        const ceiling = new THREE.Mesh(
+            new THREE.BoxGeometry(ROOM_W, 0.2, ROOM_D),
+            ceilingMat
+        );
+        ceiling.position.set(0, ROOM_H + 0.1, 0);
+        roomGroup.add(ceiling);
+
+        // Walls
+        function createWall(w, h, d, x, y, z) {
+            const wall = new THREE.Mesh(
+                new THREE.BoxGeometry(w, h, d),
+                wallMat
+            );
+            wall.position.set(x, y, z);
+            wall.receiveShadow = true;
+            wall.castShadow = true;
+            return wall;
+        }
+        const hw = ROOM_W / 2;
+        const hd = ROOM_D / 2;
+        const hh = ROOM_H / 2;
+
+        roomGroup.add(createWall(ROOM_W, ROOM_H, WALL_T, 0, hh, -hd));
+        roomGroup.add(createWall(ROOM_W, ROOM_H, WALL_T, 0, hh, hd));
+        roomGroup.add(createWall(WALL_T, ROOM_H, ROOM_D, -hw, hh, 0));
+        roomGroup.add(createWall(WALL_T, ROOM_H, ROOM_D, hw, hh, 0));
+
+        // Baseboards
+        const baseboardMat = new THREE.MeshStandardMaterial({ roughness: 0.5, color: 0x3d2010, metalness: 0.1 });
+        function addBaseboard(x, y, z, w, d) {
+            const bb = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, d), baseboardMat);
+            bb.position.set(x, y, z);
+            bb.receiveShadow = true;
+            roomGroup.add(bb);
+        }
+        addBaseboard(0, 0.08, -hd + WALL_T / 2, ROOM_W - WALL_T, 0.08);
+        addBaseboard(0, 0.08, hd - WALL_T / 2, ROOM_W - WALL_T, 0.08);
+        addBaseboard(-hw + WALL_T / 2, 0.08, 0, 0.08, ROOM_D - WALL_T);
+        addBaseboard(hw - WALL_T / 2, 0.08, 0, 0.08, ROOM_D - WALL_T);
+
+        // Rug
+        const rugMat = new THREE.MeshStandardMaterial({ roughness: 0.95, color: 0x6b3a3a, metalness: 0 });
+        const rug = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.04, 2.5), rugMat);
+        rug.position.set(0.5, 0.12, -0.8);
+        rug.receiveShadow = true;
+        roomGroup.add(rug);
+
+        // ==================== DOOR (escape) ====================
+        const doorGroup = new THREE.Group();
+        doorGroup.position.set(0, 1.1, -hd + WALL_T / 2 + 0.01);
+        roomGroup.add(doorGroup);
+
+        const doorFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(1.1, 2.2, 0.15),
+            darkWoodMat
+        );
+        doorFrame.position.set(0, 0, -0.05);
+        doorFrame.castShadow = true;
+        doorFrame.receiveShadow = true;
+        doorGroup.add(doorFrame);
+
+        const doorPanel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.9, 2.0, 0.08),
+            new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x5c3a1e, metalness: 0.2 })
+        );
+        doorPanel.position.set(0, 0, 0.02);
+        doorPanel.castShadow = true;
+        doorPanel.receiveShadow = true;
+        doorPanel.name = 'doorPanel';
+        doorGroup.add(doorPanel);
+
+        const doorKnob = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 8, 8),
+            metalMat
+        );
+        doorKnob.position.set(0.3, 0.1, 0.08);
+        doorGroup.add(doorKnob);
+
+        const lockIndicator = new THREE.Mesh(
+            new THREE.SphereGeometry(0.04, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        lockIndicator.position.set(0.25, -0.15, 0.07);
+        lockIndicator.name = 'lockIndicator';
+        doorGroup.add(lockIndicator);
+
+        // ==================== FURNITURE ====================
+        const furnitureGroup = new THREE.Group();
+        roomGroup.add(furnitureGroup);
+        const colliders = [];
+
+        function addCollider(obj, w, h, d, offsetY = 0) {
+            const box = new THREE.Box3();
+            const pos = obj.position.clone();
+            pos.y += offsetY;
+            box.setFromCenterAndSize(pos, new THREE.Vector3(w, h, d));
+            colliders.push({ box, obj });
+            return box;
+        }
+
+        // Bed
+        const bedGroup = new THREE.Group();
+        bedGroup.position.set(-3.2, 0, 2.0);
+        bedGroup.rotation.y = Math.PI / 2;
+        furnitureGroup.add(bedGroup);
+
+        const bedFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(2.1, 0.2, 1.6),
+            darkWoodMat
+        );
+        bedFrame.position.y = 0.3;
+        bedFrame.castShadow = true;
+        bedFrame.receiveShadow = true;
+        bedGroup.add(bedFrame);
+        addCollider(bedFrame, 2.1, 0.2, 1.6, 0);
+
+        const mattress = new THREE.Mesh(
+            new THREE.BoxGeometry(2.0, 0.25, 1.5),
+            new THREE.MeshStandardMaterial({ roughness: 0.8, color: 0x8899aa, metalness: 0 })
+        );
+        mattress.position.y = 0.55;
+        mattress.receiveShadow = true;
+        bedGroup.add(mattress);
+
+        const pillow = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.12, 1.0),
+            new THREE.MeshStandardMaterial({ roughness: 0.9, color: 0xddddcc, metalness: 0 })
+        );
+        pillow.position.set(-0.5, 0.72, 0);
+        pillow.receiveShadow = true;
+        bedGroup.add(pillow);
+
+        // Bed legs
+        for (let lx of [-0.85, 0.85]) {
+            for (let lz of [-0.6, 0.6]) {
+                const leg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8),
+                    darkWoodMat
+                );
+                leg.position.set(lx, 0.05, lz);
+                leg.castShadow = true;
+                bedGroup.add(leg);
+            }
+        }
+        const bedColliderBox = new THREE.Box3().setFromCenterAndSize(
+            new THREE.Vector3(bedGroup.position.x, 0.35, bedGroup.position.z),
+            new THREE.Vector3(1.6, 0.7, 2.1)
+        );
+        colliders.push({ box: bedColliderBox, obj: bedGroup, isBed: true });
+
+        // Wardrobe
+        const wardrobeGroup = new THREE.Group();
+        wardrobeGroup.position.set(3.5, 0, -2.2);
+        wardrobeGroup.rotation.y = -Math.PI / 2;
+        furnitureGroup.add(wardrobeGroup);
+
+        const wardrobeBody = new THREE.Mesh(
+            new THREE.BoxGeometry(1.4, 2.4, 0.9),
+            darkWoodMat
+        );
+        wardrobeBody.position.y = 1.2;
+        wardrobeBody.castShadow = true;
+        wardrobeBody.receiveShadow = true;
+        wardrobeGroup.add(wardrobeBody);
+        const wbBox = addCollider(wardrobeBody, 1.4, 2.4, 0.9, 0);
+
+        const wardrobeDoorL = new THREE.Mesh(
+            new THREE.BoxGeometry(0.65, 2.2, 0.05),
+            new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x5c3a1e, metalness: 0.2 })
+        );
+        wardrobeDoorL.position.set(-0.3, 1.2, 0.46);
+        wardrobeGroup.add(wardrobeDoorL);
+
+        const wardrobeDoorR = new THREE.Mesh(
+            new THREE.BoxGeometry(0.65, 2.2, 0.05),
+            new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x5c3a1e, metalness: 0.2 })
+        );
+        wardrobeDoorR.position.set(0.3, 1.2, 0.46);
+        wardrobeGroup.add(wardrobeDoorR);
+
+        const wardrobeHandle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 0.25, 8),
+            metalMat
+        );
+        wardrobeHandle.position.set(-0.3, 1.2, 0.5);
+        wardrobeHandle.rotation.x = Math.PI / 2;
+        wardrobeGroup.add(wardrobeHandle);
+
+        // Table
+        const tableGroup = new THREE.Group();
+        tableGroup.position.set(1.5, 0, 0.5);
+        furnitureGroup.add(tableGroup);
+
+        const tableTop = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.08, 1.0),
+            darkWoodMat
+        );
+        tableTop.position.y = 0.8;
+        tableTop.castShadow = true;
+        tableTop.receiveShadow = true;
+        tableGroup.add(tableTop);
+        addCollider(tableTop, 1.6, 0.08, 1.0, 0);
+
+        for (let tx of [-0.6, 0.6]) {
+            for (let tz of [-0.35, 0.35]) {
+                const tleg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.06, 0.8, 8),
+                    darkWoodMat
+                );
+                tleg.position.set(tx, 0.4, tz);
+                tleg.castShadow = true;
+                tableGroup.add(tleg);
+            }
+        }
+
+        // Chair
+        const chairGroup = new THREE.Group();
+        chairGroup.position.set(2.3, 0, -0.3);
+        chairGroup.rotation.y = 0.4;
+        furnitureGroup.add(chairGroup);
+
+        const chairSeat = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, 0.06, 0.5),
+            darkWoodMat
+        );
+        chairSeat.position.y = 0.5;
+        chairSeat.castShadow = true;
+        chairGroup.add(chairSeat);
+        addCollider(chairSeat, 0.5, 0.06, 0.5, 0);
+
+        for (let cx of [-0.18, 0.18]) {
+            for (let cz of [-0.18, 0.18]) {
+                const cleg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.03, 0.04, 0.5, 8),
+                    darkWoodMat
+                );
+                cleg.position.set(cx, 0.25, cz);
+                cleg.castShadow = true;
+                chairGroup.add(cleg);
+            }
+        }
+        const chairBack = new THREE.Mesh(
+            new THREE.BoxGeometry(0.45, 0.45, 0.05),
+            darkWoodMat
+        );
+        chairBack.position.set(0, 0.75, -0.2);
+        chairBack.castShadow = true;
+        chairGroup.add(chairBack);
+
+        // Shelf on wall
+        const shelfGroup = new THREE.Group();
+        shelfGroup.position.set(-3.9, 1.5, -2.5);
+        furnitureGroup.add(shelfGroup);
+
+        const shelfBoard = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 0.06, 0.4),
+            darkWoodMat
+        );
+        shelfBoard.position.y = 0;
+        shelfBoard.castShadow = true;
+        shelfBoard.receiveShadow = true;
+        shelfGroup.add(shelfBoard);
+        addCollider(shelfBoard, 1.2, 0.06, 0.4, 0);
+
+        // Small items on shelf
+        const book1 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, 0.22, 0.1),
+            new THREE.MeshStandardMaterial({ roughness: 0.6, color: 0x884433, metalness: 0 })
+        );
+        book1.position.set(-0.3, 0.14, 0.05);
+        book1.castShadow = true;
+        shelfGroup.add(book1);
+
+        const book2 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.12, 0.2, 0.08),
+            new THREE.MeshStandardMaterial({ roughness: 0.6, color: 0x335544, metalness: 0 })
+        );
+        book2.position.set(-0.1, 0.13, 0.04);
+        book2.rotation.z = 0.1;
+        book2.castShadow = true;
+        shelfGroup.add(book2);
+
+        const vase = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.08, 0.25, 8),
+            new THREE.MeshStandardMaterial({ roughness: 0.3, color: 0x667788, metalness: 0.5 })
+        );
+        vase.position.set(0.25, 0.15, 0.02);
+        vase.castShadow = true;
+        shelfGroup.add(vase);
+
+        // ==================== KEY ITEM ====================
+        const keyGroup = new THREE.Group();
+        keyGroup.position.set(-3.35, 1.68, -2.55);
+        keyGroup.rotation.y = 0.5;
+        keyGroup.rotation.z = 0.3;
+        scene.add(keyGroup);
+
+        const keyBow = new THREE.Mesh(
+            new THREE.TorusGeometry(0.06, 0.02, 8, 8),
+            new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.9, color: 0xddaa44 })
+        );
+        keyBow.position.set(0, 0, 0);
+        keyGroup.add(keyBow);
+
+        const keyShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.015, 0.015, 0.2, 8),
+            new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.9, color: 0xddaa44 })
+        );
+        keyShaft.position.set(0, -0.12, 0);
+        keyGroup.add(keyShaft);
+
+        const keyBit = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 0.06, 0.03),
+            new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.9, color: 0xddaa44 })
+        );
+        keyBit.position.set(0, -0.2, 0.02);
+        keyGroup.add(keyBit);
+
+        keyGroup.name = 'key';
+        const keyLight = new THREE.PointLight(0xffdd88, 3, 1.5, 2);
+        keyLight.position.copy(keyGroup.position);
+        keyLight.position.y += 0.1;
+        scene.add(keyLight);
+
+        // ==================== WINDOW (boarded) ====================
+        const windowGroup = new THREE.Group();
+        windowGroup.position.set(4.45, 1.6, 1.5);
+        roomGroup.add(windowGroup);
+
+        const windowFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 1.4, 1.0),
+            darkWoodMat
+        );
+        windowFrame.position.set(0, 0, 0);
+        windowGroup.add(windowFrame);
+
+        const windowGlass = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 1.2, 0.8),
+            new THREE.MeshStandardMaterial({ roughness: 0.2, color: 0x334455, metalness: 0.3, opacity: 0.5,
+                transparent: true })
+        );
+        windowGlass.position.set(0.02, 0, 0);
+        windowGroup.add(windowGlass);
+
+        for (let i = 0; i < 3; i++) {
+            const board = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.1, 0.85),
+                new THREE.MeshStandardMaterial({ roughness: 0.6, color: 0x5c3a1e, metalness: 0.1 })
+            );
+            board.position.set(0.04, -0.4 + i * 0.4, 0);
+            board.rotation.z = (i - 1) * 0.08;
+            windowGroup.add(board);
+        }
+
+        // Window light leak
+        const windowLight = new THREE.PointLight(0x8899cc, 2, 2, 2);
+        windowLight.position.copy(windowGroup.position);
+        windowLight.position.x -= 0.3;
+        scene.add(windowLight);
+
+        // ==================== GRANNY MODEL ====================
+        const grannyGroup = new THREE.Group();
+        grannyGroup.position.set(0, 0, 1);
+        scene.add(grannyGroup);
+
+        // Body/dress
+        const grannyBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.35, 0.9, 12),
+            new THREE.MeshStandardMaterial({ roughness: 0.7, color: 0x5c4a6e, metalness: 0.05 })
+        );
+        grannyBody.position.y = 0.55;
+        grannyBody.castShadow = true;
+        grannyGroup.add(grannyBody);
+
+        // Upper body
+        const grannyTorso = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.22, 0.45, 12),
+            new THREE.MeshStandardMaterial({ roughness: 0.7, color: 0x6b5a7e, metalness: 0.05 })
+        );
+        grannyTorso.position.y = 1.1;
+        grannyTorso.castShadow = true;
+        grannyGroup.add(grannyTorso);
+
+        // Head
+        const grannyHead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 16, 16),
+            new THREE.MeshStandardMaterial({ roughness: 0.5, color: 0xe8d5c4, metalness: 0 })
+        );
+        grannyHead.position.y = 1.55;
+        grannyHead.castShadow = true;
+        grannyHead.name = 'grannyHead';
+        grannyGroup.add(grannyHead);
+
+        // Hair
+        const grannyHair = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2.5),
+            new THREE.MeshStandardMaterial({ roughness: 0.8, color: 0x999999, metalness: 0.1 })
+        );
+        grannyHair.position.y = 1.6;
+        grannyHair.castShadow = true;
+        grannyGroup.add(grannyHair);
+
+        // Hair bun
+        const hairBun = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshStandardMaterial({ roughness: 0.8, color: 0x888888, metalness: 0.1 })
+        );
+        hairBun.position.set(0, 1.72, -0.08);
+        grannyGroup.add(hairBun);
+
+        // Eyes
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), eyeMat);
+        eyeL.position.set(-0.06, 1.58, 0.16);
+        grannyGroup.add(eyeL);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), eyeMat);
+        eyeR.position.set(0.06, 1.58, 0.16);
+        grannyGroup.add(eyeR);
+
+        // Mouth (creepy)
+        const mouth = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 0.015, 0.02),
+            new THREE.MeshBasicMaterial({ color: 0x330000 })
+        );
+        mouth.position.set(0, 1.5, 0.17);
+        grannyGroup.add(mouth);
+
+        // Arms
+        function createArm(x) {
+            const armGroup = new THREE.Group();
+            const upperArm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.06, 0.5, 8),
+                new THREE.MeshStandardMaterial({ roughness: 0.7, color: 0xe0c8b8, metalness: 0 })
+            );
+            upperArm.position.y = -0.25;
+            upperArm.castShadow = true;
+            armGroup.add(upperArm);
+
+            const forearm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.05, 0.45, 8),
+                new THREE.MeshStandardMaterial({ roughness: 0.7, color: 0xe0c8b8, metalness: 0 })
+            );
+            forearm.position.y = -0.65;
+            forearm.castShadow = true;
+            armGroup.add(forearm);
+
+            const hand = new THREE.Mesh(
+                new THREE.SphereGeometry(0.06, 6, 6),
+                new THREE.MeshStandardMaterial({ roughness: 0.5, color: 0xe8d5c4, metalness: 0 })
+            );
+            hand.position.y = -0.9;
+            armGroup.add(hand);
+
+            armGroup.position.set(x, 1.25, 0);
+            armGroup.name = x > 0 ? 'armR' : 'armL';
+            return armGroup;
+        }
+        const armL = createArm(-0.25);
+        const armR = createArm(0.25);
+        grannyGroup.add(armL);
+        grannyGroup.add(armR);
+
+        // Legs
+        function createLeg(x) {
+            const legGroup = new THREE.Group();
+            const upperLeg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.07, 0.4, 8),
+                new THREE.MeshStandardMaterial({ roughness: 0.8, color: 0x4a3a5a, metalness: 0 })
+            );
+            upperLeg.position.y = -0.2;
+            upperLeg.castShadow = true;
+            legGroup.add(upperLeg);
+            const lowerLeg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.06, 0.35, 8),
+                new THREE.MeshStandardMaterial({ roughness: 0.6, color: 0xd5c0a0, metalness: 0 })
+            );
+            lowerLeg.position.y = -0.5;
+            lowerLeg.castShadow = true;
+            legGroup.add(lowerLeg);
+            const shoe = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, 0.08, 0.14),
+                new THREE.MeshStandardMaterial({ roughness: 0.5, color: 0x1a1a1a, metalness: 0.1 })
+            );
+            shoe.position.set(0, -0.68, 0.03);
+            legGroup.add(shoe);
+            legGroup.position.set(x, 0.2, 0);
+            legGroup.name = x > 0 ? 'legR' : 'legL';
+            return legGroup;
+        }
+        const legL = createLeg(-0.1);
+        const legR = createLeg(0.1);
+        grannyGroup.add(legL);
+        grannyGroup.add(legR);
+
+        // Cane
+        const caneGroup = new THREE.Group();
+        const caneStick = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.025, 0.03, 1.6, 8),
+            new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x6b4f3a, metalness: 0.1 })
+        );
+        caneStick.position.y = -0.3;
+        caneGroup.add(caneStick);
+        const caneHandle = new THREE.Mesh(
+            new THREE.TorusGeometry(0.08, 0.025, 6, 8, Math.PI),
+            new THREE.MeshStandardMaterial({ roughness: 0.4, color: 0x6b4f3a, metalness: 0.1 })
+        );
+        caneHandle.position.y = 0.5;
+        caneHandle.rotation.x = Math.PI / 2;
+        caneGroup.add(caneHandle);
+        caneGroup.position.set(0.3, 0.1, 0.15);
+        caneGroup.rotation.z = -0.2;
+        grannyGroup.add(caneGroup);
+
+        // ==================== GAME STATE ====================
+        const playerState = {
+            position: new THREE.Vector3(1, 1.6, -2),
+            velocity: new THREE.Vector3(),
+            yaw: Math.PI,
+            pitch: -0.1,
+            isRunning: false,
+            isCrouching: false,
+            isHiding: false,
+            hideSpot: null,
+            hasKey: false,
+            noiseLevel: 0,
+            targetNoiseLevel: 0,
+            footstepTimer: 0,
+        };
+
+        const grannyState = {
+            position: new THREE.Vector3(2, 0, 2),
+            targetPosition: new THREE.Vector3(2, 0, 2),
+            yaw: 0,
+            state: 'patrol', // 'patrol' | 'investigate' | 'chase' | 'search'
+            patrolWaypoints: [
+                new THREE.Vector3(2, 0, 2.5),
+                new THREE.Vector3(-2, 0, 2.5),
+                new THREE.Vector3(-3, 0, -2),
+                new THREE.Vector3(2.5, 0, -2.5),
+                new THREE.Vector3(3, 0, 1),
+                new THREE.Vector3(-2, 0, -1),
+                new THREE.Vector3(0, 0, -3),
+            ],
+            patrolIndex: 0,
+            patrolWaitTimer: 0,
+            patrolSpeed: 1.3,
+            chaseSpeed: 3.2,
+            investigateSpeed: 2.2,
+            lastKnownPlayerPos: null,
+            searchTimer: 0,
+            lostSightTimer: 0,
+            walkCycle: 0,
+            investigationPoint: null,
+        };
+
+        let gameOver = false;
+        let gameWin = false;
+        let grannyNearTimer = 0;
+        let subtitleTimer = 0;
+        let subtitleText = '';
+        let globalTime = 0;
+
+        // ==================== COLLISION HELPERS ====================
+        function checkCollision(pos, radius = 0.3) {
+            for (const c of colliders) {
+                const box = c.box;
+                const closest = new THREE.Vector3(
+                    Math.max(box.min.x, Math.min(pos.x, box.max.x)),
+                    Math.max(box.min.y, Math.min(pos.y, box.max.y)),
+                    Math.max(box.min.z, Math.min(pos.z, box.max.z))
+                );
+                const dist = pos.distanceTo(closest);
+                if (dist < radius) return { collided: true, push: closest, normal: pos.clone().sub(closest).normalize(),
+                    dist };
+            }
+            // Room walls
+            const hwx = ROOM_W / 2 - 0.3;
+            const hdz = ROOM_D / 2 - 0.3;
+            let cx = false,
+                cz = false;
+            if (pos.x < -hwx || pos.x > hwx) cx = true;
+            if (pos.z < -hdz || pos.z > hdz) cz = true;
+            if (cx || cz) {
+                const clamped = pos.clone();
+                clamped.x = Math.max(-hwx, Math.min(hwx, clamped.x));
+                clamped.z = Math.max(-hdz, Math.min(hdz, clamped.z));
+                return { collided: true, push: clamped, normal: pos.clone().sub(clamped).normalize(), dist: pos.distanceTo(
+                        clamped) };
+            }
+            return { collided: false };
+        }
+
+        // ==================== PLAYER CONTROLS ====================
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'KeyE' && !gameOver && !gameWin) handleInteract();
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') playerState.isRunning = true;
+            if (e.code === 'ControlLeft' || e.code === 'ControlRight') playerState.isCrouching = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') playerState.isRunning = false;
+            if (e.code === 'ControlLeft' || e.code === 'ControlRight') playerState.isCrouching = false;
+        });
+
+        let pointerLocked = false;
+        renderer.domElement.addEventListener('click', () => {
+            if (!gameOver && !gameWin && !pointerLocked) {
+                renderer.domElement.requestPointerLock();
+                initAudio();
+            }
+        });
+        document.addEventListener('pointerlockchange', () => {
+            pointerLocked = document.pointerLockElement === renderer.domElement;
+            if (!pointerLocked && !gameOver && !gameWin) {
+                document.getElementById('ui').querySelector('.prompt').textContent =
+                    'Кликните для управления...';
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!pointerLocked || gameOver || gameWin) return;
+            const sens = 0.002;
+            playerState.yaw -= e.movementX * sens;
+            playerState.pitch -= e.movementY * sens;
+            playerState.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, playerState.pitch));
+        });
+
+        function handleInteract() {
+            if (gameOver || gameWin) return;
+            const ppos = playerState.position.clone();
+            // Check key pickup
+            const keyWorldPos = keyGroup.position.clone();
+            if (ppos.distanceTo(keyWorldPos) < 1.8 && !playerState.hasKey) {
+                playerState.hasKey = true;
+                keyGroup.visible = false;
+                if (keyLight) keyLight.intensity = 0;
+                document.getElementById('ui').querySelector('.prompt').textContent = 'Ключ найден! Откройте дверь!';
+                showSubtitle('Я нашёл ключ...');
+                playCreak();
+                setTimeout(() => {
+                    if (!gameOver && !gameWin && playerState.hasKey && !playerState.isHiding)
+                        document.getElementById('ui').querySelector('.prompt').textContent =
+                        'Нажмите E у двери чтобы сбежать';
+                }, 2000);
+                return;
+            }
+            // Check door
+            const doorPos = new THREE.Vector3(doorGroup.position.x, 1.1, doorGroup.position.z);
+            if (ppos.distanceTo(doorPos) < 2.0 && playerState.hasKey) {
+                escapeGame();
+                return;
+            }
+            if (ppos.distanceTo(doorPos) < 2.0 && !playerState.hasKey) {
+                document.getElementById('ui').querySelector('.prompt').textContent = 'Заперто! Нужен ключ...';
+                showSubtitle('Заперто... нужен ключ');
+                setTimeout(() => {
+                    if (!gameOver && !gameWin && !playerState.hasKey && !playerState.isHiding)
+                        document.getElementById('ui').querySelector('.prompt').textContent =
+                        'Найдите ключ и откройте дверь...';
+                }, 2000);
+                return;
+            }
+            // Check bed hiding
+            const bedPos = bedGroup.position.clone();
+            if (ppos.distanceTo(new THREE.Vector3(bedPos.x, 0.5, bedPos.z)) < 2.0) {
+                if (!playerState.isHiding) {
+                    hidePlayer('bed');
+                } else if (playerState.hideSpot === 'bed') {
+                    unhidePlayer();
+                }
+                return;
+            }
+            // Check wardrobe hiding
+            const wardPos = wardrobeGroup.position.clone();
+            if (ppos.distanceTo(new THREE.Vector3(wardPos.x, 1.2, wardPos.z)) < 1.8) {
+                if (!playerState.isHiding) {
+                    hidePlayer('wardrobe');
+                } else if (playerState.hideSpot === 'wardrobe') {
+                    unhidePlayer();
+                }
+                return;
+            }
+        }
+
+        function hidePlayer(spot) {
+            playerState.isHiding = true;
+            playerState.hideSpot = spot;
+            playerState.isRunning = false;
+            playerState.isCrouching = false;
+            playerState.noiseLevel = 0;
+            playerState.targetNoiseLevel = 0;
+            if (spot === 'bed') {
+                playerState.position.y = 0.2;
+                document.getElementById('ui').querySelector('.prompt').textContent = 'Вы под кроватью. E - выйти';
+            } else if (spot === 'wardrobe') {
+                playerState.position.y = 1.2;
+                document.getElementById('ui').querySelector('.prompt').textContent = 'Вы в шкафу. E - выйти';
+            }
+            document.getElementById('vignette').classList.add('danger');
+            showSubtitle('Тихо...');
+        }
+
+        function unhidePlayer() {
+            playerState.isHiding = false;
+            playerState.hideSpot = null;
+            playerState.position.y = 1.6;
+            document.getElementById('vignette').classList.remove('danger');
+            document.getElementById('ui').querySelector('.prompt').textContent =
+                playerState.hasKey ? 'Нажмите E у двери чтобы сбежать' : 'Найдите ключ и откройте дверь...';
+        }
+
+        function escapeGame() {
+            gameWin = true;
+            document.exitPointerLock();
+            pointerLocked = false;
+            document.getElementById('win-screen').classList.add('active');
+            document.getElementById('ui').querySelector('.prompt').textContent = '';
+            document.getElementById('subtitle').style.opacity = '0';
+            if (audioCtx) {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.5);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 1);
+            }
+        }
+
+        function catchPlayer() {
+            gameOver = true;
+            document.exitPointerLock();
+            pointerLocked = false;
+            document.getElementById('game-over-screen').classList.add('active');
+            document.getElementById('ui').querySelector('.prompt').textContent = '';
+            document.getElementById('subtitle').style.opacity = '0';
+            document.getElementById('vignette').classList.add('danger');
+            if (audioCtx) {
+                const now = audioCtx.currentTime;
+                for (let i = 0; i < 3; i++) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(30, now + i * 0.2);
+                    osc.frequency.exponentialRampToValueAtTime(15, now + i * 0.2 + 0.3);
+                    gain.gain.setValueAtTime(0.4, now + i * 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.2 + 0.4);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + i * 0.2);
+                    osc.stop(now + i * 0.2 + 0.4);
+                }
+            }
+        }
+
+        function showSubtitle(text) {
+            subtitleText = text;
+            subtitleTimer = 2.5;
+            document.getElementById('subtitle').textContent = text;
+            document.getElementById('subtitle').style.opacity = '1';
+        }
+
+        // ==================== GRANNY AI ====================
+        function updateGrannyAI(delta) {
+            if (gameOver || gameWin) return;
+
+            const grannyPos = grannyState.position;
+            const playerPos = playerState.position.clone();
+            const distToPlayer = grannyPos.distanceTo(playerPos);
+            const grannyEyePos = grannyPos.clone();
+            grannyEyePos.y = 1.5;
+
+            // Check visibility
+            const toPlayer = playerPos.clone().sub(grannyEyePos).normalize();
+            const grannyForward = new THREE.Vector3(-Math.sin(grannyState.yaw), 0, -Math.cos(grannyState.yaw)).normalize();
+            const dotProduct = toPlayer.dot(grannyForward);
+            const inFOV = dotProduct > 0.25;
+            const playerVisible = inFOV && distToPlayer < 7 && !playerState.isHiding;
+
+            // Raycast for line of sight
+            let hasLineOfSight = false;
+            if (playerVisible && distToPlayer < 7) {
+                const rayOrigin = grannyEyePos.clone();
+                const rayDir = playerPos.clone().sub(rayOrigin).normalize();
+                hasLineOfSight = true;
+                for (const c of colliders) {
+                    const box = c.box;
+                    const invDir = new THREE.Vector3(1 / (rayDir.x || 0.001), 1 / (rayDir.y || 0.001), 1 / (rayDir.z ||
+                        0.001));
+                    const tMin = new THREE.Vector3(
+                        (box.min.x - rayOrigin.x) * invDir.x,
+                        (box.min.y - rayOrigin.y) * invDir.y,
+                        (box.min.z - rayOrigin.z) * invDir.z
+                    );
+                    const tMax = new THREE.Vector3(
+                        (box.max.x - rayOrigin.x) * invDir.x,
+                        (box.max.y - rayOrigin.y) * invDir.y,
+                        (box.max.z - rayOrigin.z) * invDir.z
+                    );
+                    const tEnter = Math.max(Math.min(tMin.x, tMax.x), Math.min(tMin.y, tMax.y), Math.min(tMin.z, tMax.z));
+                    const tExit = Math.min(Math.max(tMin.x, tMax.x), Math.max(tMin.y, tMax.y), Math.max(tMin.z, tMax.z));
+                    if (tEnter < tExit && tEnter > 0.05 && tEnter < distToPlayer - 0.3) {
+                        hasLineOfSight = false;
+                        break;
+                    }
+                }
+                // Also check room walls
+                const hwx = ROOM_W / 2 - 0.3;
+                const hdz = ROOM_D / 2 - 0.3;
+                const wallBoxes = [
+                    new THREE.Box3(new THREE.Vector3(-hwx - 0.5, -1, -hdz - 0.5), new THREE.Vector3(hwx + 0.5, ROOM_H +
+                        1, -hdz)),
+                    new THREE.Box3(new THREE.Vector3(-hwx - 0.5, -1, hdz), new THREE.Vector3(hwx + 0.5, ROOM_H + 1, hdz +
+                        0.5)),
+                ];
+                for (const wb of wallBoxes) {
+                    const invDir = new THREE.Vector3(1 / (rayDir.x || 0.001), 1 / (rayDir.y || 0.001), 1 / (rayDir.z ||
+                        0.001));
+                    const tMin = new THREE.Vector3((wb.min.x - rayOrigin.x) * invDir.x, (wb.min.y - rayOrigin.y) * invDir
+                        .y, (wb.min.z - rayOrigin.z) * invDir.z);
+                    const tMax = new THREE.Vector3((wb.max.x - rayOrigin.x) * invDir.x, (wb.max.y - rayOrigin.y) * invDir
+                        .y, (wb.max.z - rayOrigin.z) * invDir.z);
+                    const tEnter = Math.max(Math.min(tMin.x, tMax.x), Math.min(tMin.y, tMax.y), Math.min(tMin.z, tMax.z));
+                    const tExit = Math.min(Math.max(tMin.x, tMax.x), Math.max(tMin.y, tMax.y), Math.max(tMin.z, tMax.z));
+                    if (tEnter < tExit && tEnter > 0.05 && tEnter < distToPlayer - 0.3) {
+                        hasLineOfSight = false;
+                        break;
+                    }
+                }
+            }
+
+            const canSeePlayer = playerVisible && hasLineOfSight && !playerState.isHiding;
+
+            // Hearing
+            const canHearPlayer = playerState.noiseLevel > 40 && distToPlayer < 8 && !playerState.isHiding;
+
+            // State transitions
+            if (canSeePlayer && distToPlayer < 6) {
+                if (grannyState.state !== 'chase') {
+                    grannyState.state = 'chase';
+                    grannyState.lastKnownPlayerPos = playerPos.clone();
+                    showSubtitle('Я ВИЖУ ТЕБЯ!');
+                }
+                grannyState.lastKnownPlayerPos = playerPos.clone();
+                grannyState.lostSightTimer = 0;
+            } else if (grannyState.state === 'chase') {
+                grannyState.lostSightTimer += delta;
+                if (grannyState.lostSightTimer > 3.0) {
+                    grannyState.state = 'search';
+                    grannyState.searchTimer = 5.0;
+                    showSubtitle('Где ты?..');
+                }
+            } else if (canHearPlayer && grannyState.state === 'patrol') {
+                grannyState.state = 'investigate';
+                grannyState.investigationPoint = playerPos.clone();
+                grannyState.lastKnownPlayerPos = playerPos.clone();
+                showSubtitle('Что за шум?');
+            }
+
+            // Behavior
+            if (grannyState.state === 'patrol') {
+                const wp = grannyState.patrolWaypoints[grannyState.patrolIndex];
+                const distToWP = grannyPos.distanceTo(new THREE.Vector3(wp.x, 0, wp.z));
+                if (distToWP < 0.4) {
+                    grannyState.patrolWaitTimer += delta;
+                    if (grannyState.patrolWaitTimer > 1.5 + Math.random() * 2.5) {
+                        grannyState.patrolWaitTimer = 0;
+                        grannyState.patrolIndex = (grannyState.patrolIndex + 1) % grannyState.patrolWaypoints.length;
+                    }
+                } else {
+                    grannyState.targetPosition.copy(wp);
+                    grannyState.targetPosition.y = 0;
+                    moveGrannyTowards(grannyState.targetPosition, grannyState.patrolSpeed, delta);
+                }
+            } else if (grannyState.state === 'investigate') {
+                const ip = grannyState.investigationPoint;
+                const distToIP = grannyPos.distanceTo(new THREE.Vector3(ip.x, 0, ip.z));
+                if (distToIP < 0.5) {
+                    grannyState.patrolWaitTimer += delta;
+                    if (grannyState.patrolWaitTimer > 3.0) {
+                        grannyState.state = 'patrol';
+                        grannyState.patrolWaitTimer = 0;
+                        grannyState.investigationPoint = null;
+                    }
+                } else {
+                    grannyState.targetPosition.copy(ip);
+                    grannyState.targetPosition.y = 0;
+                    moveGrannyTowards(grannyState.targetPosition, grannyState.investigateSpeed, delta);
+                }
+            } else if (grannyState.state === 'chase') {
+                if (grannyState.lastKnownPlayerPos) {
+                    grannyState.targetPosition.copy(grannyState.lastKnownPlayerPos);
+                    grannyState.targetPosition.y = 0;
+                    moveGrannyTowards(grannyState.targetPosition, grannyState.chaseSpeed, delta);
+                }
+                if (distToPlayer < 1.0 && !playerState.isHiding) {
+                    catchPlayer();
+                }
+            } else if (grannyState.state === 'search') {
+                grannyState.searchTimer -= delta;
+                if (grannyState.searchTimer <= 0) {
+                    grannyState.state = 'patrol';
+                    grannyState.patrolWaitTimer = 0;
+                } else if (grannyState.lastKnownPlayerPos) {
+                    const sp = grannyState.lastKnownPlayerPos;
+                    const wanderX = sp.x + Math.sin(globalTime * 1.7) * 2;
+                    const wanderZ = sp.z + Math.cos(globalTime * 1.7) * 2;
+                    grannyState.targetPosition.set(wanderX, 0, wanderZ);
+                    moveGrannyTowards(grannyState.targetPosition, grannyState.investigateSpeed * 0.8, delta);
+                }
+            }
+
+            // If player is very close and not hiding, chance to detect
+            if (distToPlayer < 1.5 && !playerState.isHiding && grannyState.state === 'patrol' && Math.random() < 0.01) {
+                grannyState.state = 'chase';
+                grannyState.lastKnownPlayerPos = playerPos.clone();
+                showSubtitle('КТО ЗДЕСЬ?!');
+            }
+        }
+
+        function moveGrannyTowards(target, speed, delta) {
+            const grannyPos = grannyState.position;
+            const dir = new THREE.Vector3(target.x, 0, target.z).sub(new THREE.Vector3(grannyPos.x, 0, grannyPos.z));
+            const dist = dir.length();
+            if (dist < 0.1) return;
+            dir.normalize();
+            const moveSpeed = Math.min(speed * delta, dist);
+            const newPos = grannyPos.clone().add(dir.clone().multiplyScalar(moveSpeed));
+            newPos.y = 0;
+            // Check granny collision
+            const grannyCollision = checkCollision(new THREE.Vector3(newPos.x, 0.5, newPos.z), 0.35);
+            if (!grannyCollision.collided) {
+                grannyState.position.copy(newPos);
+                grannyState.walkCycle += moveSpeed * 8;
+            } else {
+                // Try sliding
+                const slideX = new THREE.Vector3(newPos.x, 0.5, grannyPos.z);
+                const slideZ = new THREE.Vector3(grannyPos.x, 0.5, newPos.z);
+                if (!checkCollision(slideX, 0.35).collided) {
+                    grannyState.position.x = newPos.x;
+                    grannyState.walkCycle += Math.abs(newPos.x - grannyPos.x) * 8;
+                }
+                if (!checkCollision(slideZ, 0.35).collided) {
+                    grannyState.position.z = newPos.z;
+                    grannyState.walkCycle += Math.abs(newPos.z - grannyPos.z) * 8;
+                }
+            }
+            grannyState.yaw = Math.atan2(-dir.x, -dir.z);
+        }
+
+        // ==================== GAME LOOP ====================
+        const clock = new THREE.Clock();
+        let lastFootstepTime = 0;
+
+        function update(delta) {
+            if (gameOver || gameWin) return;
+            globalTime += delta;
+
+            // Cap delta
+            const dt = Math.min(delta, 0.2);
+
+            // Update player
+            if (!playerState.isHiding && pointerLocked) {
+                const forward = new THREE.Vector3(-Math.sin(playerState.yaw), 0, -Math.cos(playerState.yaw));
+                const right = new THREE.Vector3(Math.cos(playerState.yaw), 0, -Math.sin(playerState.yaw));
+                const moveDir = new THREE.Vector3();
+
+                if (keys['KeyW']) moveDir.add(forward);
+                if (keys['KeyS']) moveDir.sub(forward);
+                if (keys['KeyA']) moveDir.sub(right);
+                if (keys['KeyD']) moveDir.add(right);
+
+                if (moveDir.length() > 0) moveDir.normalize();
+
+                const baseSpeed = playerState.isCrouching ? 1.5 : (playerState.isRunning ? 5.5 : 2.8);
+                const speed = baseSpeed * dt;
+
+                const newPos = playerState.position.clone().add(moveDir.clone().multiplyScalar(speed));
+                const collision = checkCollision(new THREE.Vector3(newPos.x, 1.6, newPos.z), 0.3);
+
+                if (!collision.collided) {
+                    playerState.position.copy(newPos);
+                } else {
+                    const slideX = new THREE.Vector3(newPos.x, 1.6, playerState.position.z);
+                    const slideZ = new THREE.Vector3(playerState.position.x, 1.6, newPos.z);
+                    if (!checkCollision(slideX, 0.3).collided) playerState.position.x = newPos.x;
+                    if (!checkCollision(slideZ, 0.3).collided) playerState.position.z = newPos.z;
+                }
+
+                // Noise
+                const moving = moveDir.length() > 0.1;
+                const makingNoise = moving && playerState.isRunning;
+                playerState.targetNoiseLevel = makingNoise ? 100 : (moving && !playerState.isCrouching ? 25 : 0);
+                playerState.noiseLevel += (playerState.targetNoiseLevel - playerState.noiseLevel) * 8 * dt;
+
+                // Footsteps
+                if (moving && globalTime - lastFootstepTime > (playerState.isRunning ? 0.3 : 0.55)) {
+                    lastFootstepTime = globalTime;
+                    const vol = playerState.isRunning ? 0.12 : 0.04;
+                    playFootstep(vol);
+                }
+            } else if (playerState.isHiding) {
+                playerState.noiseLevel = Math.max(0, playerState.noiseLevel - 30 * dt);
+                playerState.targetNoiseLevel = 0;
+            } else {
+                playerState.noiseLevel = Math.max(0, playerState.noiseLevel - 20 * dt);
+                playerState.targetNoiseLevel = Math.max(0, playerState.targetNoiseLevel - 20 * dt);
+            }
+
+            // Update Granny AI
+            updateGrannyAI(dt);
+
+            // Update granny group position
+            grannyGroup.position.copy(grannyState.position);
+            grannyGroup.position.y = 0;
+            grannyGroup.rotation.y = grannyState.yaw;
+
+            // Granny walk animation
+            const walkSin = Math.sin(grannyState.walkCycle);
+            const isMoving = grannyState.state !== 'patrol' || grannyState.patrolWaitTimer < 0.1;
+            if (isMoving && grannyState.walkCycle > 0) {
+                armL.rotation.x = walkSin * 0.7;
+                armR.rotation.x = -walkSin * 0.7;
+                legL.rotation.x = -walkSin * 0.5;
+                legR.rotation.x = walkSin * 0.5;
+                grannyBody.position.y = 0.55 + Math.abs(walkSin) * 0.04;
+                grannyTorso.position.y = 1.1 + Math.abs(walkSin) * 0.04;
+                grannyHead.position.y = 1.55 + Math.abs(walkSin) * 0.04;
+                grannyHair.position.y = 1.6 + Math.abs(walkSin) * 0.04;
+                hairBun.position.y = 1.72 + Math.abs(walkSin) * 0.04;
+            } else {
+                armL.rotation.x += (0 - armL.rotation.x) * 5 * dt;
+                armR.rotation.x += (0 - armR.rotation.x) * 5 * dt;
+                legL.rotation.x += (0 - legL.rotation.x) * 5 * dt;
+                legR.rotation.x += (0 - legR.rotation.x) * 5 * dt;
+            }
+
+            // Granny near check
+            const distGranny = playerState.position.distanceTo(grannyState.position);
+            if (distGranny < 3 && !playerState.isHiding && grannyState.state === 'chase') {
+                grannyNearTimer += dt;
+                if (grannyNearTimer > 0.5) {
+                    grannyNearTimer = 0;
+                    playHeartbeat();
+                }
+                document.getElementById('heartbeat').classList.add('active');
+                document.getElementById('vignette').classList.add('danger');
+            } else if (distGranny < 5 && grannyState.state === 'chase') {
+                document.getElementById('heartbeat').classList.add('active');
+                document.getElementById('vignette').classList.add('danger');
+            } else {
+                document.getElementById('heartbeat').classList.remove('active');
+                if (!playerState.isHiding) document.getElementById('vignette').classList.remove('danger');
+            }
+
+            // Subtitle timer
+            if (subtitleTimer > 0) {
+                subtitleTimer -= dt;
+                if (subtitleTimer <= 0) {
+                    document.getElementById('subtitle').style.opacity = '0';
+                    subtitleText = '';
+                }
+            }
+
+            // Light flicker
+            const flicker = 1 + Math.sin(globalTime * 7.3) * 0.03 + Math.sin(globalTime * 13.7) * 0.04 + Math.random() * 0.02;
+            ceilingLight.intensity = 38 * flicker;
+            bulbGlow.material.color.setRGB(1, 0.92 * flicker, 0.82 * flicker);
+
+            // Rotate key gently
+            if (!playerState.hasKey) {
+                keyGroup.rotation.y += dt * 0.8;
+                keyGroup.position.y = 1.68 + Math.sin(globalTime * 2) * 0.05;
+                if (keyLight) keyLight.intensity = 3 + Math.sin(globalTime * 3) * 0.8;
+            }
+
+            // Update lock indicator
+            if (lockIndicator && playerState.hasKey) {
+                lockIndicator.material.color.setHex(0x00ff00);
+            }
+
+            // Update camera
+            const eyeHeight = playerState.isHiding ?
+                (playerState.hideSpot === 'bed' ? 0.2 : 1.2) :
+                (playerState.isCrouching ? 1.0 : 1.6);
+            playerState.position.y += (eyeHeight - playerState.position.y) * 8 * dt;
+            camera.position.copy(playerState.position);
+            camera.rotation.y = playerState.yaw;
+            camera.rotation.x = playerState.pitch;
+
+            // Update UI
+            document.getElementById('noise-fill').style.width = Math.round(playerState.noiseLevel) + '%';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            update(delta);
+            renderer.render(scene, camera);
+        }
+
+        // ==================== START ====================
+        function restartGame() {
+            location.reload();
+        }
+        window.restartGame = restartGame;
+
+        // Initial setup
+        grannyState.position.set(2, 0, 2.5);
+        grannyState.targetPosition.copy(grannyState.position);
+        grannyState.patrolIndex = 0;
+        playerState.position.set(1, 1.6, -2);
+        playerState.yaw = Math.PI;
+        playerState.pitch = -0.1;
+        playerState.hasKey = false;
+        playerState.isHiding = false;
+        playerState.hideSpot = null;
+        keyGroup.visible = true;
+        if (keyLight) keyLight.intensity = 3;
+        if (lockIndicator) lockIndicator.material.color.setHex(0xff0000);
+        gameOver = false;
+        gameWin = false;
+        document.getElementById('game-over-screen').classList.remove('active');
+        document.getElementById('win-screen').classList.remove('active');
+        document.getElementById('vignette').classList.remove('danger');
+        document.getElementById('heartbeat').classList.remove('active');
+        document.getElementById('ui').querySelector('.prompt').textContent = 'Кликните для управления...';
+        document.getElementById('subtitle').style.opacity = '0';
+        document.getElementById('noise-fill').style.width = '0%';
+
+        // Adjust room for bed and wardrobe
+        grannyGroup.position.copy(grannyState.position);
+
+        console.log('🏚️ Granny - Комната 1 готова.');
+        console.log('🖱️ Кликните на экран для захвата мыши.');
+        console.log('🔑 Найдите ключ (светится золотым) и откройте дверь.');
+        console.log('🛏️ Прячьтесь под кроватью или в шкафу (клавиша E).');
+        console.log('👵 Бабушка патрулирует комнату. Не шумите!');
+
+        animate();
+    </script>
+</body>
+</html>
